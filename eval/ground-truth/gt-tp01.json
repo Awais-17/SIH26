@@ -1,0 +1,45 @@
+{
+  "page_id": "tp01-login-form",
+  "page_file": "tp01-login-form.html",
+  "description": "Simple login form — email + password",
+  "sensitive_elements": [
+    {
+      "id": "gt-001",
+      "selector": "#password",
+      "type": "password_input",
+      "detection_layer": "DOM",
+      "reason": "input[type=password]",
+      "expected_redaction": "black_fill",
+      "pii_category": "credential"
+    },
+    {
+      "id": "gt-002",
+      "selector": "#email",
+      "type": "email_pii",
+      "detection_layer": "regex",
+      "reason": "email regex match on value: john.doe@gmail.com",
+      "expected_redaction": "blur",
+      "pii_category": "contact"
+    }
+  ],
+  "non_sensitive_elements": [
+    { "selector": "label[for='email']", "type": "label" },
+    { "selector": "label[for='password']", "type": "label" },
+    { "selector": "#submit-btn", "type": "button" },
+    { "selector": "#remember", "type": "checkbox" },
+    { "selector": "h1", "type": "heading" },
+    { "selector": ".footer", "type": "footer_text" }
+  ],
+  "expected_detections": {
+    "password_field_count": 1,
+    "email_regex_count": 1,
+    "ner_entity_count": 0,
+    "face_count": 0,
+    "total_sensitive": 2,
+    "total_non_sensitive": 6
+  },
+  "expected_masks": [
+    { "type": "black_fill", "target": "#password" },
+    { "type": "blur", "target": "#email" }
+  ]
+}

@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      width: 320px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 13px;
+      color: #e0e0e0;
+      background: #1a1a2e;
+      padding: 16px;
+    }
+    h1 {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      color: #00d4ff;
+    }
+    .section {
+      margin-bottom: 16px;
+    }
+    .section-title {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #888;
+      margin-bottom: 8px;
+    }
+    label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+      cursor: pointer;
+    }
+    input[type="checkbox"] {
+      accent-color: #00d4ff;
+    }
+    input[type="text"], input[type="url"] {
+      width: 100%;
+      padding: 6px 8px;
+      background: #16213e;
+      border: 1px solid #333;
+      border-radius: 4px;
+      color: #e0e0e0;
+      font-size: 12px;
+      margin-bottom: 8px;
+    }
+    input:focus {
+      outline: none;
+      border-color: #00d4ff;
+    }
+    button {
+      width: 100%;
+      padding: 10px;
+      background: #00d4ff;
+      color: #1a1a2e;
+      border: none;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+      margin-top: 8px;
+    }
+    button:hover { background: #00b8d9; }
+    button:disabled { background: #444; color: #888; cursor: not-allowed; }
+    .status {
+      margin-top: 12px;
+      padding: 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      display: none;
+    }
+    .status.active { display: block; background: #16213e; border: 1px solid #333; }
+    .status.success { border-color: #00c853; }
+    .status.error { border-color: #ff1744; }
+    .task-input {
+      width: 100%;
+      min-height: 60px;
+      padding: 8px;
+      background: #16213e;
+      border: 1px solid #333;
+      border-radius: 4px;
+      color: #e0e0e0;
+      font-size: 12px;
+      resize: vertical;
+      font-family: inherit;
+      margin-bottom: 8px;
+    }
+    .task-input:focus {
+      outline: none;
+      border-color: #00d4ff;
+    }
+  </style>
+</head>
+<body>
+  <h1>SIH26171 Privacy Agent</h1>
+
+  <div class="section">
+    <div class="section-title">Detections</div>
+    <label><input type="checkbox" id="face-detection" checked> Face Detection (BlazeFace)</label>
+    <label><input type="checkbox" id="password-detection" checked> Password Fields (DOM)</label>
+    <label><input type="checkbox" id="pii-detection" checked> Text PII (Regex + NER)</label>
+  </div>
+
+  <div class="section">
+    <div class="section-title">VLM Server</div>
+    <input type="url" id="vlm-endpoint" placeholder="http://localhost:8000/v1/chat/completions">
+    <input type="text" id="vlm-model" placeholder="Qwen/Qwen3-VL-8B-Instruct">
+  </div>
+
+  <div class="section">
+    <div class="section-title">Task</div>
+    <textarea class="task-input" id="task-input" placeholder="Describe what to do on this page..."></textarea>
+    <button id="run-btn">Run Agent</button>
+  </div>
+
+  <div class="status" id="status"></div>
+
+  <script src="popup.js" type="module"></script>
+</body>
+</html>

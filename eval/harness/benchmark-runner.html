@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<!--
+  Benchmark Runner Page
+  eval/harness/benchmark-runner.html
+  
+  Opens all 7 test pages in iframes sequentially,
+  injects eval-harness.js into each, collects results,
+  and displays an aggregate benchmark report in the UI.
+  
+  USAGE: Open this file in Chrome with the SIH26171 extension loaded.
+  Or simply open it as a standalone local file (file:// protocol).
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>SIH26171 — Benchmark Runner</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: "Courier New", monospace; background: #0d1117; color: #c9d1d9; min-height: 100vh; padding: 24px; }
+    h1 { font-size: 1.2rem; color: #58a6ff; margin-bottom: 4px; }
+    .subtitle { font-size: 0.78rem; color: #8b949e; margin-bottom: 24px; }
+    .controls { display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
+    .btn {
+      padding: 8px 20px; border: none; border-radius: 6px;
+      font-family: inherit; font-size: 0.85rem; font-weight: 700;
+      cursor: pointer;
+    }
+    .btn-primary { background: #238636; color: #fff; }
+    .btn-primary:hover { background: #2ea043; }
+    .btn-secondary { background: #21262d; color: #c9d1d9; border: 1px solid #30363d; }
+    .btn-secondary:hover { background: #30363d; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* Status strip */
+    .status-bar { background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 10px 16px; font-size: 0.82rem; color: #8b949e; margin-bottom: 20px; min-height: 40px; }
+    .status-bar.running { color: #f0a400; }
+    .status-bar.done { color: #3fb950; }
+    .status-bar.error { color: #f85149; }
+
+    /* Progress */
+    .progress-wrap { background: #161b22; border-radius: 4px; height: 8px; margin-bottom: 20px; overflow: hidden; }
+    .progress-fill { height: 100%; background: #238636; transition: width 0.3s ease; width: 0%; }
+
+    /* Results grid */
+    .results-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .result-card {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 16px;
+    }
+    .result-card.pass { border-color: #238636; }
+    .result-card.fail { border-color: #f85149; }
+    .result-card.running { border-color: #f0a400; }
+    .result-card .page-id { font-size: 0.78rem; color: #8b949e; margin-bottom: 6px; }
+    .result-card .verdict { font-size: 1rem; font-weight: 700; margin-bottom: 8px; }
+    .result-card .verdict.pass { color: #3fb950; }
+    .result-card .verdict.fail { color: #f85149; }
+    .result-card .verdict.pending { color: #8b949e; }
+    .result-card .verdict.running { color: #f0a400; }
+    .metric-row { display: flex; justify-content: space-between; font-size: 0.78rem; padding: 2px 0; border-bottom: 1px solid #21262d; }
+    .metric-row .label { color: #8b949e; }
+    .metric-row .value { color: #c9d1d9; font-weight: 600; }
+    .metric-row .value.good { color: #3fb950; }
+    .metric-row .value.bad { color: #f85149; }
+    .metric-row .value.warn { color: #f0a400; }
+
+    /* Aggregate panel */
+    .aggregate-panel { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; margin-bottom: 24px; }
+    .aggregate-panel h2 { font-size: 0.9rem; color: #58a6ff; margin-bottom: 14px; }
+    .big-metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+    .big-metric { text-align: center; padding: 12px; background: #0d1117; border-radius: 6px; border: 1px solid #21262d; }
+    .big-metric .label { font-size: 0.7rem; color: #8b949e; text-transform: uppercase; letter-spacing: 0.5px; }
+    .big-metric .value { font-size: 1.6rem; font-weight: 700; margin-top: 4px; }
+    .big-metric .value.good { color: #3fb950; }
+    .big-metric .value.bad { color: #f85149; }
+    .big-metric .value.warn { color: #f0a400; }
+    .pass-criteria { display: flex; flex-wrap: wrap; gap: 8px; }
+    .criterion { background: #0d1117; border-radius: 4px; padding: 4px 10px; font-size: 0.75rem; border: 1px solid #30363d; }
+    .criterion.pass { border-color: #238636; color: #3fb950; }
+    .criterion.fail { border-color: #f85149; color: #f85149; }
+
+    /* JSON export */
+    .export-area { background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 12px; font-size: 0.72rem; color: #8b949e; max-height: 200px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; }
+
+    /* Failure cases */
+    .failure-section { background: #161b22; border: 1px solid #f85149; border-radius: 8px; padding: 16px; margin-bottom: 24px; }
+    .failure-section h2 { font-size: 0.9rem; color: #f85149; margin-bottom: 12px; }
+    .failure-item { padding: 6px 0; border-bottom: 1px solid #21262d; font-size: 0.8rem; }
+    .failure-item .page-ref { color: #8b949e; }
+    .failure-item .selector { color: #f0a400; }
+    .failure-item .reason { color: #c9d1d9; }
+  </style>
+</head>
+<body>
+  <h1>SIH26171 — Evaluation Benchmark Runner</h1>
+  <p class="subtitle">Automated PII detection evaluation across 7 synthetic test pages.</p>
+
+  <div class="controls">
+    <button class="btn btn-primary" id="run-all-btn" onclick="runAllTests()">▶ Run All Tests</button>
+    <button class="btn btn-secondary" onclick="resetResults()">↺ Reset</button>
+    <button class="btn btn-secondary" onclick="exportJSON()">⬇ Export JSON</button>
+    <button class="btn btn-secondary" onclick="runFailureTests()">⚡ Run Failure Tests</button>
+  </div>
+
+  <div id="status-bar" class="status-bar">Ready. Click "Run All Tests" to begin.</div>
+  <div class="progress-wrap"><div class="progress-fill" id="progress-fill"></div></div>
+
+  <!-- Per-page results -->
+  <div class="results-grid" id="results-grid"></div>
+
+  <!-- Aggregate -->
+  <div class="aggregate-panel" id="aggregate-panel" style="display:none">
+    <h2>Aggregate Results</h2>
+    <div class="big-metrics" id="big-metrics"></div>
+    <h3 style="font-size:0.78rem;color:#8b949e;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;">Pass Criteria</h3>
+    <div class="pass-criteria" id="pass-criteria"></div>
+  </div>
+
+  <!-- Failure cases -->
+  <div class="failure-section" id="failure-section" style="display:none">
+    <h2>⚠ Failure Cases</h2>
+    <div id="failure-list"></div>
+  </div>
+
+  <!-- JSON export -->
+  <div id="export-section" style="display:none;margin-bottom:24px;">
+    <h3 style="font-size:0.85rem;color:#58a6ff;margin-bottom:8px;">Raw JSON Report</h3>
+    <div class="export-area" id="export-area"></div>
+  </div>
+
+  <script>
+    // ── Test page registry ─────────────────────────────────────────
+    const TEST_PAGES = [
+      { id: "tp01-login-form",         file: "../test-pages/tp01-login-form.html",        label: "TP01: Login Form" },
+      { id: "tp02-payment-form",       file: "../test-pages/tp02-payment-form.html",      label: "TP02: Payment Form" },
+      { id: "tp03-profile-page",       file: "../test-pages/tp03-profile-page.html",      label: "TP03: Profile Page" },
+      { id: "tp04-healthcare-dashboard", file: "../test-pages/tp04-healthcare-dashboard.html", label: "TP04: Healthcare Dashboard" },
+      { id: "tp05-business-dashboard", file: "../test-pages/tp05-business-dashboard.html", label: "TP05: Business Dashboard" },
+      { id: "tp06-dynamic-checkout",   file: "../test-pages/tp06-dynamic-checkout.html",  label: "TP06: Dynamic Checkout" },
+      { id: "tp07-kyc-portal",         file: "../test-pages/tp07-kyc-portal.html",        label: "TP07: KYC Portal (Generalization)" },
+    ];
+
+    const allResults = [];
+
+    // ── Render initial cards ───────────────────────────────────────
+    function initCards() {
+      const grid = document.getElementById("results-grid");
+      grid.innerHTML = "";
+      TEST_PAGES.forEach(page => {
+        grid.innerHTML += `
+          <div class="result-card" id="card-${page.id}">
+            <div class="page-id">${page.id}</div>
+            <div class="verdict pending" id="verdict-${page.id}">— Pending</div>
+            <div id="metrics-${page.id}"></div>
+          </div>`;
+      });
+    }
+
+    function setCardRunning(pageId) {
+      document.getElementById(`card-${pageId}`).className = "result-card running";
+      document.getElementById(`verdict-${pageId}`).className = "verdict running";
+      document.getElementById(`verdict-${pageId}`).textContent = "⏳ Running...";
+    }
+
+    function setCardResult(pageId, result) {
+      const card = document.getElementById(`card-${pageId}`);
+      const m = result.metrics;
+      const l = result.latency;
+      const pf = result.passFail;
+
+      const allPass = pf ? Object.values(pf).every(v => v.pass) : null;
+      card.className = `result-card ${allPass === null ? "" : allPass ? "pass" : "fail"}`;
+
+      const verdictEl = document.getElementById(`verdict-${pageId}`);
+      if (allPass === null) {
+        verdictEl.className = "verdict";
+        verdictEl.textContent = "No GT";
+      } else if (allPass) {
+        verdictEl.className = "verdict pass";
+        verdictEl.textContent = "✅ PASS";
+      } else {
+        verdictEl.className = "verdict fail";
+        verdictEl.textContent = "❌ FAIL";
+      }
+
+      const metricsEl = document.getElementById(`metrics-${pageId}`);
+      if (!m.error) {
+        metricsEl.innerHTML = [
+          metricRow("Precision",     m.precision,         { good: v => v >= 0.90 }),
+          metricRow("Recall",        m.recall,            { good: v => v >= 0.85 }),
+          metricRow("F1",            m.f1,                { good: v => v >= 0.875 }),
+          metricRow("TP / FP / FN", `${m.tp} / ${m.fp} / ${m.fn}`, {}),
+          metricRow("Over-redact",   m.overRedactionRate, { good: v => v <= 0.10, invert: true }),
+          metricRow("Inference",     `${l.localInferenceMs}ms`, { good: v => parseFloat(v) <= 500 }),
+        ].join("");
+      } else {
+        metricsEl.innerHTML = `<div style="font-size:0.75rem;color:#8b949e;margin-top:8px;">${m.error}</div>`;
+      }
+    }
+
+    function metricRow(label, value, { good, invert } = {}) {
+      let cls = "";
+      if (good) {
+        const numVal = typeof value === "number" ? value : parseFloat(value);
+        const isGood = good(numVal);
+        cls = isGood ? "good" : "bad";
+      }
+      const displayVal = typeof value === "number" ? `${(value * 100).toFixed(1)}%` : value;
+      return `<div class="metric-row"><span class="label">${label}</span><span class="value ${cls}">${displayVal}</span></div>`;
+    }
+
+    // ── Main runner ────────────────────────────────────────────────
+    async function runAllTests() {
+      document.getElementById("run-all-btn").disabled = true;
+      document.getElementById("aggregate-panel").style.display = "none";
+      document.getElementById("failure-section").style.display = "none";
+      document.getElementById("export-section").style.display = "none";
+      allResults.length = 0;
+      initCards();
+
+      setStatus("Starting benchmark...", "running");
+
+      for (let i = 0; i < TEST_PAGES.length; i++) {
+        const page = TEST_PAGES[i];
+        setProgress((i / TEST_PAGES.length) * 100);
+        setStatus(`Running ${page.label} (${i + 1}/${TEST_PAGES.length})...`, "running");
+        setCardRunning(page.id);
+
+        try {
+          const result = await evalPageInIframe(page.file, page.id);
+          result.pageLabel = page.label;
+          allResults.push(result);
+          setCardResult(page.id, result);
+        } catch (err) {
+          console.error(`[Runner] Error on ${page.id}:`, err);
+          const errResult = {
+            dataset: { pageId: page.id },
+            metrics: { error: err.message },
+            latency: { localInferenceMs: 0 },
+            passFail: null,
+          };
+          allResults.push(errResult);
+          setCardResult(page.id, errResult);
+        }
+      }
+
+      setProgress(100);
+      setStatus(`Benchmark complete. ${TEST_PAGES.length} pages evaluated.`, "done");
+      renderAggregate();
+      renderFailureCases();
+      document.getElementById("run-all-btn").disabled = false;
+    }
+
+    // ── Iframe-based evaluation ────────────────────────────────────
+    function evalPageInIframe(pageFile, pageId) {
+      return new Promise((resolve, reject) => {
+        const iframe = document.createElement("iframe");
+        iframe.style.cssText = "position:absolute;left:-9999px;width:1280px;height:900px;border:none;";
+        document.body.appendChild(iframe);
+
+        const timeout = setTimeout(() => {
+          iframe.remove();
+          reject(new Error(`Timeout evaluating ${pageId}`));
+        }, 10000);
+
+        iframe.onload = () => {
+          try {
+            // Inject harness script into iframe
+            const script = iframe.contentDocument.createElement("script");
+            script.src = "./eval-harness.js";
+            script.onload = () => {
+              setTimeout(() => {
+                try {
+                  const harness = iframe.contentWindow.__sih26171_harness;
+                  if (!harness) throw new Error("Harness not loaded in iframe");
+                  const result = harness.runEvaluation();
+                  clearTimeout(timeout);
+                  iframe.remove();
+                  resolve(result);
+                } catch (e) {
+                  clearTimeout(timeout);
+                  iframe.remove();
+                  reject(e);
+                }
+              }, 200); // Small delay for dynamic content init
+            };
+            script.onerror = () => {
+              clearTimeout(timeout);
+              iframe.remove();
+              reject(new Error(`Failed to load harness in ${pageId}`));
+            };
+            iframe.contentDocument.head.appendChild(script);
+          } catch (e) {
+            clearTimeout(timeout);
+            iframe.remove();
+            reject(e);
+          }
+        };
+
+        iframe.src = pageFile;
+      });
+    }
+
+    // ── Aggregate rendering ────────────────────────────────────────
+    function renderAggregate() {
+      const valid = allResults.filter(r => !r.metrics.error);
+      if (valid.length === 0) return;
+
+      const avgP  = avg(valid.map(r => r.metrics.precision));
+      const avgR  = avg(valid.map(r => r.metrics.recall));
+      const avgF1 = avg(valid.map(r => r.metrics.f1));
+      const avgOr = avg(valid.map(r => r.metrics.overRedactionRate));
+
+      const totalTP = sum(valid.map(r => r.metrics.tp));
+      const totalFP = sum(valid.map(r => r.metrics.fp));
+      const totalFN = sum(valid.map(r => r.metrics.fn));
+
+      const microP  = totalTP + totalFP > 0 ? totalTP / (totalTP + totalFP) : 0;
+      const microR  = totalTP + totalFN > 0 ? totalTP / (totalTP + totalFN) : 0;
+      const microF1 = microP + microR > 0 ? 2 * microP * microR / (microP + microR) : 0;
+
+      document.getElementById("big-metrics").innerHTML = [
+        bigMetric("Precision",     avgP,  v => v >= 0.90),
+        bigMetric("Recall",        avgR,  v => v >= 0.85),
+        bigMetric("F1 Score",      avgF1, v => v >= 0.875),
+        bigMetric("Over-redact",   avgOr, v => v <= 0.10, true),
+      ].join("");
+
+      const criteria = [
+        { label: `Precision ≥90%`, pass: avgP >= 0.90 },
+        { label: `Recall ≥85%`,    pass: avgR >= 0.85 },
+        { label: `F1 ≥87.5%`,      pass: avgF1 >= 0.875 },
+        { label: `Over-redact ≤10%`, pass: avgOr <= 0.10 },
+        { label: `Max Inf ≤500ms`, pass: Math.max(...valid.map(r => r.latency.localInferenceMs)) <= 500 },
+      ];
+
+      document.getElementById("pass-criteria").innerHTML = criteria
+        .map(c => `<div class="criterion ${c.pass ? "pass" : "fail"}">${c.pass ? "✅" : "❌"} ${c.label}</div>`)
+        .join("");
+
+      document.getElementById("aggregate-panel").style.display = "block";
+    }
+
+    function bigMetric(label, value, good, invert = false) {
+      const isGood = good(value);
+      const cls = isGood ? "good" : "bad";
+      return `<div class="big-metric">
+        <div class="label">${label}</div>
+        <div class="value ${cls}">${(value * 100).toFixed(1)}%</div>
+      </div>`;
+    }
+
+    // ── Failure case rendering ─────────────────────────────────────
+    function renderFailureCases() {
+      const failures = [];
+      allResults.forEach(r => {
+        if (r.metrics.error) return;
+        (r.metrics.falseNegatives || []).forEach(fn => {
+          failures.push({ type: "FN", pageId: r.dataset.pageId, ...fn });
+        });
+        (r.metrics.falsePositives || []).forEach(fp => {
+          failures.push({ type: "FP", pageId: r.dataset.pageId, selector: fp });
+        });
+      });
+
+      if (failures.length === 0) return;
+
+      const list = document.getElementById("failure-list");
+      list.innerHTML = failures.map(f => `
+        <div class="failure-item">
+          <span class="page-ref">[${f.pageId}]</span>
+          <span style="color:${f.type === "FN" ? "#f85149" : "#f0a400"};margin:0 8px;">${f.type}</span>
+          <span class="selector">${f.selector}</span>
+          ${f.type === "FN" ? `<span class="reason"> — ${f.reason || f.type || ""}</span>` : ""}
+        </div>
+      `).join("");
+
+      document.getElementById("failure-section").style.display = "block";
+    }
+
+    // ── Failure mode tests ─────────────────────────────────────────
+    async function runFailureTests() {
+      setStatus("Running failure mode tests...", "running");
+      const harness = window.__sih26171_harness;
+      if (!harness) {
+        setStatus("Harness not loaded. Load this page with eval-harness.js.", "error");
+        return;
+      }
+
+      // WebGPU fallback
+      harness.testWebGPUFallback();
+
+      // Dynamic detection
+      const dynResult = await harness.testDynamicDetection(800);
+      console.log("[Failure Test] Dynamic:", dynResult);
+
+      setStatus("Failure tests complete. Check console for details.", "done");
+    }
+
+    // ── Utilities ─────────────────────────────────────────────────
+    function avg(arr) { return arr.length === 0 ? 0 : arr.reduce((a, b) => a + b, 0) / arr.length; }
+    function sum(arr) { return arr.reduce((a, b) => a + b, 0); }
+
+    function setStatus(msg, type = "") {
+      const el = document.getElementById("status-bar");
+      el.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+      el.className = `status-bar ${type}`;
+    }
+
+    function setProgress(pct) {
+      document.getElementById("progress-fill").style.width = `${pct}%`;
+    }
+
+    function resetResults() {
+      allResults.length = 0;
+      initCards();
+      setProgress(0);
+      setStatus("Reset. Ready.", "");
+      document.getElementById("aggregate-panel").style.display = "none";
+      document.getElementById("failure-section").style.display = "none";
+      document.getElementById("export-section").style.display = "none";
+    }
+
+    function exportJSON() {
+      const json = JSON.stringify(allResults, null, 2);
+      document.getElementById("export-area").textContent = json;
+      document.getElementById("export-section").style.display = "block";
+
+      // Also trigger download
+      const blob = new Blob([json], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `sih26171-benchmark-${new Date().toISOString().slice(0,19).replace(/:/g,"-")}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    // Init on load
+    initCards();
+  </script>
+</body>
+</html>

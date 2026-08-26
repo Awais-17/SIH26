@@ -1,0 +1,15 @@
+{
+  "name": "sih26171-browser-agent",
+  "version": "0.1.0",
+  "private": true,
+  "description": "On-device visual perception for lightweight browser agents",
+  "scripts": {
+    "dev": "echo 'Load src/ as unpacked extension in chrome://extensions'",
+    "lint": "eslint src/",
+    "typecheck": "echo 'No TypeScript yet'"
+  },
+  "devDependencies": {},
+  "dependencies": {
+    "onnxruntime-web": "^1.21.0"
+  }
+}

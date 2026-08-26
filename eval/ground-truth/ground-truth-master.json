@@ -1,0 +1,514 @@
+[
+  {
+    "page_id": "tp01-login-form",
+    "page_file": "tp01-login-form.html",
+    "description": "Simple login form — email + password",
+    "sensitive_elements": [
+      {
+        "id": "gt-001",
+        "selector": "#password",
+        "type": "password_input",
+        "detection_layer": "DOM",
+        "reason": "input[type=password]",
+        "expected_redaction": "black_fill",
+        "pii_category": "credential",
+        "is_dynamic": false
+      },
+      {
+        "id": "gt-002",
+        "selector": "#email",
+        "type": "email_pii",
+        "detection_layer": "regex",
+        "reason": "email regex match on value john.doe@gmail.com",
+        "expected_redaction": "blur",
+        "pii_category": "contact",
+        "is_dynamic": false
+      }
+    ],
+    "non_sensitive_elements": [
+      { "selector": "label[for='email']", "type": "label" },
+      { "selector": "label[for='password']", "type": "label" },
+      { "selector": "#submit-btn", "type": "button" },
+      { "selector": "#remember", "type": "checkbox" }
+    ],
+    "expected_totals": { "sensitive": 2, "non_sensitive": 4, "face": 0 }
+  },
+  {
+    "page_id": "tp02-payment-form",
+    "page_file": "tp02-payment-form.html",
+    "description": "Dark-themed payment form with card details",
+    "sensitive_elements": [
+      {
+        "id": "gt-003",
+        "selector": "#card-number",
+        "type": "sensitive_input",
+        "detection_layer": "DOM",
+        "reason": "autocomplete=cc-number",
+        "expected_redaction": "blur",
+        "pii_category": "financial",
+        "is_dynamic": false
+      },
+      {
+        "id": "gt-004",
+        "selector": "#cvv",
+        "type": "sensitive_input",
+        "detection_layer": "DOM",
+        "reason": "autocomplete=cc-csc",
+        "expected_redaction": "black_fill",
+        "pii_category": "financial",
+        "is_dynamic": false
+      },
+      {
+        "id": "gt-005",
+        "selector": "#card-name",
+        "type": "sensitive_input",
+        "detection_layer": "DOM+NER",
+        "reason": "autocomplete=cc-name, NER PERSON: Priya Sharma",
+        "expected_redaction": "blur",
+        "pii_category": "identity",
+        "is_dynamic": false
+      },
+      {
+        "id": "gt-006",
+        "selector": "#expiry",
+        "type": "sensitive_input",
+        "detection_layer": "DOM",
+        "reason": "autocomplete=cc-exp",
+        "expected_redaction": "blur",
+        "pii_category": "financial",
+        "is_dynamic": false
+      }
+    ],
+    "non_sensitive_elements": [
+      { "selector": "#street", "type": "input", "note": "billing address" },
+      { "selector": "#city", "type": "input" },
+      { "selector": "#zip", "type": "input" },
+      { "selector": "#pay-btn", "type": "button" },
+      { "selector": ".section-title", "type": "heading" }
+    ],
+    "expected_totals": { "sensitive": 4, "non_sensitive": 5, "face": 0 }
+  },
+  {
+    "page_id": "tp03-profile-page",
+    "page_file": "tp03-profile-page.html",
+    "description": "Social profile page with personal details and face avatar",
+    "sensitive_elements": [
+      {
+        "id": "gt-007",
+        "selector": "#user-name",
+        "type": "ner_person",
+        "detection_layer": "NER",
+        "reason": "NER PERSON: Arjun Mehta",
+        "expected_redaction": "blur",
+        "pii_category": "identity",
+        "is_dynamic": false
+      },
+      {
+        "id": "gt-008",
+        "selector": "#user-email",
+        "type": "email_pii",
+        "detection_layer": "regex",
+        "reason": "email regex: arjun.mehta@hotmail.com",
+        "expected_redaction": "blur",
+        "pii_category": "contact",
+        "is_dynamic": false
+      },
+      {
+        "id": "gt-009",
+        "selector": "#user-phone",
+        "type": "phone_pii",
+        "detection_layer": "regex",
+        "reason": "phone regex: +91 98765 43210",
+        "expected_redaction": "blur",
+        "pii_category": "contact",
+        "is_dynamic": false
+      },
+      {
+        "id": "gt-010",
+        "selector": "#user-location",
+        "type": "ner_location",
+        "detection_layer": "NER",
+        "reason": "NER LOC: Bengaluru, Karnataka",
+        "expected_redaction": "blur",
+        "pii_category": "location",
+        "is_dynamic": false
+      },
+      {
+        "id": "gt-011",
+        "selector": "#user-dob",
+        "type": "personal_info",
+        "detection_layer": "NER",
+        "reason": "Date of birth pattern",
+        "expected_redaction": "blur",
+        "pii_category": "personal",
+        "is_dynamic": false
+      },
+      {
+        "id": "gt-012",
+        "selector": "#profile-photo",
+        "type": "face",
+        "detection_layer": "visual",
+        "reason": "BlazeFace detection target (avatar placeholder)",
+        "expected_redaction": "blur",
+        "pii_category": "biometric",
+        "is_dynamic": false,
+        "note": "Avatar placeholder div — BlazeFace requires actual image; this tests graceful no-detection on non-image elements"
+      }
+    ],
+    "non_sensitive_elements": [
+      { "selector": ".bio", "type": "text", "note": "bio text — no PII patterns" },
+      { "selector": ".stat-num", "type": "statistics" },
+      { "selector": ".tab", "type": "navigation" },
+      { "selector": ".tag", "type": "tag" },
+      { "selector": ".handle", "type": "username", "note": "@handle — public, not sensitive" }
+    ],
+    "expected_totals": { "sensitive": 6, "non_sensitive": 5, "face": 0 }
+  },
+  {
+    "page_id": "tp04-healthcare-dashboard",
+    "page_file": "tp04-healthcare-dashboard.html",
+    "description": "Healthcare patient dashboard — high PII density",
+    "sensitive_elements": [
+      {
+        "id": "gt-013",
+        "selector": "#patient-name",
+        "type": "ner_person",
+        "detection_layer": "NER",
+        "reason": "NER PERSON: Kavitha Ramaswamy",
+        "pii_category": "identity",
+        "is_dynamic": false
+      },
+      {
+        "id": "gt-014",
+        "selector": "#patient-ssn",
+        "type": "ssn_pii",
+        "detection_layer": "regex",
+        "reason": "SSN regex: 524-68-1903",
+        "pii_category": "government_id",
+        "is_dynamic": false
+      },
+      {
+        "id": "gt-015",
+        "selector": "#patient-id",
+        "type": "id_pii",
+        "detection_layer": "regex",
+        "reason": "Medical record number: MRN-483920",
+        "pii_category": "medical_id",
+        "is_dynamic": false
+      },
+      {
+        "id": "gt-016",
+        "selector": "#patient-dob",
+        "type": "personal_info",
+        "detection_layer": "NER",
+        "reason": "DOB: 19 July 1978",
+        "pii_category": "personal",
+        "is_dynamic": false
+      },
+      {
+        "id": "gt-017",
+        "selector": "#patient-phone",
+        "type": "phone_pii",
+        "detection_layer": "regex",
+        "reason": "phone regex: +91 044-2345-6789",
+        "pii_category": "contact",
+        "is_dynamic": false
+      },
+      {
+        "id": "gt-018",
+        "selector": "#insurance-id",
+        "type": "id_pii",
+        "detection_layer": "keyword+regex",
+        "reason": "Insurance ID: NHIP-00382710",
+        "pii_category": "financial",
+        "is_dynamic": false
+      },
+      {
+        "id": "gt-019",
+        "selector": "#diagnosis-text",
+        "type": "medical_info",
+        "detection_layer": "NER",
+        "reason": "Medical diagnosis — sensitive health data (ICD codes)",
+        "pii_category": "health",
+        "is_dynamic": false,
+        "note": "Requires medical NER model — beyond base DistilBERT; flag as known limitation"
+      },
+      {
+        "id": "gt-020",
+        "selector": "#medication-list",
+        "type": "medical_info",
+        "detection_layer": "NER",
+        "reason": "Medication list — sensitive health data",
+        "pii_category": "health",
+        "is_dynamic": false,
+        "note": "Requires medical NER model; flag as known limitation"
+      }
+    ],
+    "non_sensitive_elements": [
+      { "selector": ".vital-card", "type": "vitals", "note": "vitals are medical data but not PII alone" },
+      { "selector": ".nav-item", "type": "navigation" },
+      { "selector": "table.records th", "type": "table_header" },
+      { "selector": ".alert-box", "type": "allergy_info", "note": "edge case — allergy info could be sensitive" }
+    ],
+    "expected_totals": { "sensitive": 8, "non_sensitive": 4, "face": 0 }
+  },
+  {
+    "page_id": "tp05-business-dashboard",
+    "page_file": "tp05-business-dashboard.html",
+    "description": "Business dashboard — over-redaction resistance test",
+    "sensitive_elements": [
+      {
+        "id": "gt-021",
+        "selector": "#employee-ssn",
+        "type": "ssn_pii",
+        "detection_layer": "keyword",
+        "reason": "SSN/PAN identifier: ABCDE1234F",
+        "pii_category": "government_id",
+        "is_dynamic": false
+      },
+      {
+        "id": "gt-022",
+        "selector": "#employee-salary",
+        "type": "financial_pii",
+        "detection_layer": "context",
+        "reason": "Individual salary — financial PII in HR section",
+        "pii_category": "financial",
+        "is_dynamic": false,
+        "note": "Requires context awareness; standalone amount not always flagged — known limitation"
+      },
+      {
+        "id": "gt-023",
+        "selector": "#bank-account",
+        "type": "financial_pii",
+        "detection_layer": "keyword+regex",
+        "reason": "Bank account number: HDFC-008811234567",
+        "pii_category": "financial",
+        "is_dynamic": false
+      },
+      {
+        "id": "gt-024",
+        "selector": "#api-secret",
+        "type": "credential",
+        "detection_layer": "keyword",
+        "reason": "secret keyword + API key value",
+        "pii_category": "credential",
+        "is_dynamic": false
+      },
+      {
+        "id": "gt-025",
+        "selector": "#admin-password",
+        "type": "password_input",
+        "detection_layer": "DOM",
+        "reason": "input[type=password]",
+        "pii_category": "credential",
+        "is_dynamic": false
+      },
+      {
+        "id": "gt-026",
+        "selector": "#employee-name",
+        "type": "ner_person",
+        "detection_layer": "NER",
+        "reason": "NER PERSON: Suresh Balakrishnan in HR sensitive section",
+        "pii_category": "identity",
+        "is_dynamic": false
+      }
+    ],
+    "non_sensitive_elements": [
+      { "selector": "#revenue-total", "type": "business_metric", "note": "MUST NOT be redacted" },
+      { "selector": "#team-size", "type": "business_metric", "note": "MUST NOT be redacted" },
+      { "selector": "#product-count", "type": "business_metric", "note": "MUST NOT be redacted" },
+      { "selector": "#customer-count", "type": "business_metric", "note": "MUST NOT be redacted" },
+      { "selector": ".kpi", "type": "kpi_card", "note": "MUST NOT be redacted" },
+      { "selector": ".bar-chart", "type": "chart", "note": "MUST NOT be redacted" },
+      { "selector": ".nav-link", "type": "navigation", "note": "MUST NOT be redacted" },
+      { "selector": "table td", "type": "transaction_data", "note": "MUST NOT be redacted" }
+    ],
+    "expected_totals": { "sensitive": 6, "non_sensitive": 8, "face": 0 },
+    "primary_metric": "over_redaction_rate",
+    "over_redaction_target_max": 0.10
+  },
+  {
+    "page_id": "tp06-dynamic-checkout",
+    "page_file": "tp06-dynamic-checkout.html",
+    "description": "Dynamic checkout — MutationObserver generalization test",
+    "sensitive_elements": [
+      {
+        "id": "gt-027",
+        "selector": "#new-password",
+        "type": "password_input",
+        "detection_layer": "DOM",
+        "reason": "type=password",
+        "pii_category": "credential",
+        "is_dynamic": true,
+        "dynamic_trigger": "tab_switch",
+        "max_detection_delay_ms": 500
+      },
+      {
+        "id": "gt-028",
+        "selector": "#login-password",
+        "type": "password_input",
+        "detection_layer": "DOM",
+        "reason": "type=password",
+        "pii_category": "credential",
+        "is_dynamic": true,
+        "dynamic_trigger": "tab_switch",
+        "max_detection_delay_ms": 500
+      },
+      {
+        "id": "gt-029",
+        "selector": "#otp-code",
+        "type": "sensitive_input",
+        "detection_layer": "DOM",
+        "reason": "name=otp-pin contains keyword 'pin'",
+        "pii_category": "credential",
+        "is_dynamic": false
+      },
+      {
+        "id": "gt-030",
+        "selector": "#card-num-late",
+        "type": "sensitive_input",
+        "detection_layer": "DOM",
+        "reason": "autocomplete=cc-number",
+        "pii_category": "financial",
+        "is_dynamic": true,
+        "dynamic_trigger": "timer_1500ms",
+        "max_detection_delay_ms": 500
+      },
+      {
+        "id": "gt-031",
+        "selector": "#ssn-late",
+        "type": "sensitive_input",
+        "detection_layer": "DOM+keyword",
+        "reason": "name=ssn keyword",
+        "pii_category": "government_id",
+        "is_dynamic": true,
+        "dynamic_trigger": "timer_3000ms",
+        "max_detection_delay_ms": 500
+      },
+      {
+        "id": "gt-032",
+        "selector": "#ship-phone",
+        "type": "phone_pii",
+        "detection_layer": "regex",
+        "reason": "phone regex: +91 98765 43210",
+        "pii_category": "contact",
+        "is_dynamic": false
+      }
+    ],
+    "non_sensitive_elements": [
+      { "selector": "#ship-street", "type": "address" },
+      { "selector": "#ship-city", "type": "address" },
+      { "selector": "#ship-pin", "type": "postal_code" },
+      { "selector": "#coupon-code", "type": "promo_input" },
+      { "selector": ".product-name", "type": "product_info" },
+      { "selector": ".total-row", "type": "price_display" }
+    ],
+    "expected_totals": { "sensitive": 6, "non_sensitive": 6, "face": 0 },
+    "dynamic_test_cases": [
+      {
+        "test_id": "DYN-01",
+        "description": "Card number field injected after 1500ms timer",
+        "selector": "#card-num-late",
+        "injection_delay_ms": 1500,
+        "max_detection_delay_ms": 500,
+        "pass_condition": "field detected within 500ms of DOM insertion"
+      },
+      {
+        "test_id": "DYN-02",
+        "description": "SSN field injected after 3000ms timer",
+        "selector": "#ssn-late",
+        "injection_delay_ms": 3000,
+        "max_detection_delay_ms": 500,
+        "pass_condition": "field detected within 500ms of DOM insertion"
+      },
+      {
+        "test_id": "DYN-03",
+        "description": "Password field appears on tab switch (display:none → block)",
+        "selector": "#new-password",
+        "trigger": "tab_switch_click",
+        "max_detection_delay_ms": 500,
+        "pass_condition": "field detected within 500ms of becoming visible"
+      }
+    ]
+  },
+  {
+    "page_id": "tp07-kyc-portal",
+    "page_file": "tp07-kyc-portal.html",
+    "description": "Government KYC portal — generalization test (unseen layout)",
+    "sensitive_elements": [
+      {
+        "id": "gt-033",
+        "selector": "#full-name",
+        "type": "ner_person",
+        "detection_layer": "NER",
+        "reason": "NER PERSON: Lakshmi Narayanan",
+        "pii_category": "identity",
+        "is_dynamic": false
+      },
+      {
+        "id": "gt-034",
+        "selector": "#dob",
+        "type": "personal_info",
+        "detection_layer": "date_pattern",
+        "reason": "Date of birth field: 1985-06-23",
+        "pii_category": "personal",
+        "is_dynamic": false
+      },
+      {
+        "id": "gt-035",
+        "selector": "#mobile-num",
+        "type": "phone_pii",
+        "detection_layer": "regex",
+        "reason": "phone regex: +91 9123456780",
+        "pii_category": "contact",
+        "is_dynamic": false
+      },
+      {
+        "id": "gt-036",
+        "selector": "#aadhaar-num",
+        "type": "id_pii",
+        "detection_layer": "regex+keyword",
+        "reason": "12-digit Aadhaar: 5432 8761 9023",
+        "pii_category": "government_id",
+        "is_dynamic": false
+      },
+      {
+        "id": "gt-037",
+        "selector": "#pan-card",
+        "type": "id_pii",
+        "detection_layer": "keyword+regex",
+        "reason": "PAN: BCRPK7291M (10-char alphanumeric)",
+        "pii_category": "government_id",
+        "is_dynamic": false
+      },
+      {
+        "id": "gt-038",
+        "selector": "#pin-field",
+        "type": "password_input",
+        "detection_layer": "DOM",
+        "reason": "input[type=password]",
+        "pii_category": "credential",
+        "is_dynamic": false
+      },
+      {
+        "id": "gt-039",
+        "selector": "#address",
+        "type": "ner_location",
+        "detection_layer": "NER",
+        "reason": "NER LOC: Rajajinagar, Bengaluru, Karnataka",
+        "pii_category": "location",
+        "is_dynamic": false
+      }
+    ],
+    "non_sensitive_elements": [
+      { "selector": "#gender", "type": "select" },
+      { "selector": ".upload-box", "type": "file_upload" },
+      { "selector": ".breadcrumb", "type": "navigation" },
+      { "selector": ".secondary-nav a", "type": "navigation" },
+      { "selector": ".notice", "type": "info_text" },
+      { "selector": ".prog-label", "type": "progress" }
+    ],
+    "expected_totals": { "sensitive": 7, "non_sensitive": 6, "face": 0 },
+    "generalization_notes": "Table-based form layout, serif font, government color scheme — tests layout-agnostic detection"
+  }
+]
