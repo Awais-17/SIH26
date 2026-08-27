@@ -1,4 +1,4 @@
-# 🧠 Plain-Language Tech Explainer — SIH26171
+# 🧠 Plain-Language Tech Explainer — Aegis
 
 > Read this before touching any code. Every library we use is here, explained simply.
 
@@ -331,7 +331,7 @@ BACKGROUND (background.js)  ← the manager
 | Ollama | Your machine | `curl http://localhost:11434/api/tags` |
 | Vision model | Inside Ollama | `ollama list` → look for llava/qwen2-vl |
 | Chrome | Browser | Already have it |
-| Extension loaded | `chrome://extensions` | Load unpacked → SIH26 folder |
+| Extension loaded | `chrome://extensions` | Load unpacked → Aegis folder |
 | ONNX Runtime Web | Loaded by code | Will verify once inference.worker.js is built |
 | Transformers.js | Loaded by code | Will verify once NER pipeline is built |
 

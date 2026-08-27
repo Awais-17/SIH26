@@ -238,5 +238,5 @@
     }
   });
 
-  console.log("[SIH26171] Content script loaded");
+  console.log("[Aegis] Content script loaded");
 })();

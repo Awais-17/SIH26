@@ -1,4 +1,4 @@
-# SIH26171 — Benchmark Report
+# Aegis — Benchmark Report
 
 **Date:** <!-- FILL: e.g. 2026-08-26 -->  
 **Evaluator:** <!-- FILL: name/role -->  
@@ -195,7 +195,7 @@ The NER and face detection layers are **stubs in the current build** (v0.1.0). A
 
 ## Regression Test Results
 
-Run by: `window.__sih26171_regression.runRegressionTests()`
+Run by: `window.__aegis_regression.runRegressionTests()`
 
 | Suite | Tests | Passed | Failed |
 |---|---|---|---|

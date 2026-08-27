@@ -1,4 +1,4 @@
-# 🎯 SIH26171 — Deep Structured Analysis
+# 🎯 Aegis — Deep Structured Analysis
 ### On-device Visual Perception for Light-weight Browser Agents
 **Organization:** Indian Space Research Organisation (ISRO) | **Department:** Department of Space | **Category:** Software | **Theme:** Miscellaneous
 

@@ -1,4 +1,4 @@
-# SIH26171 — Evaluation Framework
+# Aegis — Evaluation Framework
 
 **QA, Benchmark & Evaluation System for the Privacy-Preserving Browser Agent**
 
@@ -61,7 +61,7 @@ eval/
 
 ### Option A — Benchmark Runner (Recommended)
 
-1. Load the extension in Chrome (`chrome://extensions → Load unpacked → SIH26/`)
+1. Load the extension in Chrome (`chrome://extensions → Load unpacked → Aegis/`)
 2. Open `eval/harness/benchmark-runner.html` in Chrome
 3. Click **▶ Run All Tests**
 4. Wait ~30 seconds for all 7 pages to be evaluated
@@ -85,7 +85,7 @@ eval/
 1. On any page with `eval-harness.js` loaded:
    ```js
    // Load regression-tests.js, then:
-   window.__sih26171_regression.runRegressionTests()
+   window.__aegis_regression.runRegressionTests()
    ```
 2. See pass/fail for all 33 unit tests
 

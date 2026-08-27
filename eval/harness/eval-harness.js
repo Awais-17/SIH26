@@ -1,5 +1,5 @@
 /**
- * SIH26171 — Evaluation Harness
+ * Aegis — Evaluation Harness
  * eval/harness/eval-harness.js
  *
  * PURPOSE
@@ -377,7 +377,7 @@ function buildSummary(metrics, latency, memory, passFail) {
 function printReport(report) {
   const { dataset, metrics, latency, memory, passFail, summary } = report;
 
-  console.group(`%c[SIH26171 Eval] ${dataset.pageId}`, "color:#4299e1;font-weight:bold;font-size:14px");
+  console.group(`%c[Aegis Eval] ${dataset.pageId}`, "color:#4299e1;font-weight:bold;font-size:14px");
 
   console.log(`%cEnvironment`, "font-weight:bold;color:#48bb78");
   console.log(`  Browser:  ${report.environment.userAgent.split(") ").pop()}`);
@@ -543,7 +543,7 @@ function computeAggregateReport() {
     },
   };
 
-  console.group("%c[SIH26171 Eval] AGGREGATE REPORT", "color:#f6e05e;font-weight:bold;font-size:16px");
+  console.group("%c[Aegis Eval] AGGREGATE REPORT", "color:#f6e05e;font-weight:bold;font-size:16px");
   console.log(`Pages: ${aggregate.pages_evaluated} (${aggregate.pages_with_ground_truth} with GT)`);
   console.log(`\nMacro Metrics (average per page):`);
   console.table(aggregate.macro_metrics);
@@ -681,7 +681,7 @@ function iou(boxA, boxB) {
 // ── Auto-run if embedded directly in test page ────────────────────
 
 if (document.readyState === "complete") {
-  window.__sih26171_harness = {
+  window.__aegis_harness = {
     evalPage,
     computeAggregateReport,
     testWebGPUFallback,
@@ -690,12 +690,12 @@ if (document.readyState === "complete") {
     EVAL_CONFIG,
   };
   console.log(
-    "%c[SIH26171 Eval Harness] Loaded. Run: window.__sih26171_harness.evalPage()",
+    "%c[Aegis Eval Harness] Loaded. Run: window.__aegis_harness.evalPage()",
     "color:#4299e1;font-weight:bold"
   );
 } else {
   document.addEventListener("DOMContentLoaded", () => {
-    window.__sih26171_harness = {
+    window.__aegis_harness = {
       evalPage,
       computeAggregateReport,
       testWebGPUFallback,
@@ -704,7 +704,7 @@ if (document.readyState === "complete") {
       EVAL_CONFIG,
     };
     console.log(
-      "%c[SIH26171 Eval Harness] Loaded. Run: window.__sih26171_harness.evalPage()",
+      "%c[Aegis Eval Harness] Loaded. Run: window.__aegis_harness.evalPage()",
       "color:#4299e1;font-weight:bold"
     );
   });

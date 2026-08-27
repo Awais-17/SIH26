@@ -133,4 +133,4 @@ async function detectTextPII(visibleTexts) {
   return detections;
 }
 
-console.log("[SIH26171] Offscreen document loaded");
+console.log("[Aegis] Offscreen document loaded");

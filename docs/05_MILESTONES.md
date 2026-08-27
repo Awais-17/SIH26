@@ -1,6 +1,6 @@
 # 05 — Milestones
 
-**SIH26171: On-device Visual Perception for Light-weight Browser Agents**
+**Aegis: On-device Visual Perception for Light-weight Browser Agents**
 
 ---
 

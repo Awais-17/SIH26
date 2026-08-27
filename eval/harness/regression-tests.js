@@ -1,5 +1,5 @@
 /**
- * SIH26171 — Regression Test Suite
+ * Aegis — Regression Test Suite
  * eval/harness/regression-tests.js
  *
  * Unit-level tests for individual detection functions.
@@ -405,7 +405,7 @@ function runRegressionTests() {
   _regressionResults.failed.length = 0;
   _regressionResults.skipped.length = 0;
 
-  console.group("%c[SIH26171] Regression Tests", "color:#f6e05e;font-weight:bold;font-size:14px");
+  console.group("%c[Aegis] Regression Tests", "color:#f6e05e;font-weight:bold;font-size:14px");
 
   // Check dependencies
   if (typeof harnessRunDOMScan === "undefined" ||
@@ -445,5 +445,5 @@ function runRegressionTests() {
 }
 
 // Export to window
-window.__sih26171_regression = { runRegressionTests };
-console.log("%c[SIH26171 Regression] Loaded. Run: window.__sih26171_regression.runRegressionTests()", "color:#4299e1");
+window.__aegis_regression = { runRegressionTests };
+console.log("%c[Aegis Regression] Loaded. Run: window.__aegis_regression.runRegressionTests()", "color:#4299e1");

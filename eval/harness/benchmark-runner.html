@@ -7,13 +7,13 @@
   injects eval-harness.js into each, collects results,
   and displays an aggregate benchmark report in the UI.
   
-  USAGE: Open this file in Chrome with the SIH26171 extension loaded.
+  USAGE: Open this file in Chrome with the Aegis extension loaded.
   Or simply open it as a standalone local file (file:// protocol).
 -->
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>SIH26171 — Benchmark Runner</title>
+  <title>Aegis — Benchmark Runner</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: "Courier New", monospace; background: #0d1117; color: #c9d1d9; min-height: 100vh; padding: 24px; }
@@ -93,7 +93,7 @@
   </style>
 </head>
 <body>
-  <h1>SIH26171 — Evaluation Benchmark Runner</h1>
+  <h1>Aegis — Evaluation Benchmark Runner</h1>
   <p class="subtitle">Automated PII detection evaluation across 7 synthetic test pages.</p>
 
   <div class="controls">
@@ -272,7 +272,7 @@
             script.onload = () => {
               setTimeout(() => {
                 try {
-                  const harness = iframe.contentWindow.__sih26171_harness;
+                  const harness = iframe.contentWindow.__aegis_harness;
                   if (!harness) throw new Error("Harness not loaded in iframe");
                   const result = harness.runEvaluation();
                   clearTimeout(timeout);
@@ -382,7 +382,7 @@
     // ── Failure mode tests ─────────────────────────────────────────
     async function runFailureTests() {
       setStatus("Running failure mode tests...", "running");
-      const harness = window.__sih26171_harness;
+      const harness = window.__aegis_harness;
       if (!harness) {
         setStatus("Harness not loaded. Load this page with eval-harness.js.", "error");
         return;
@@ -432,7 +432,7 @@
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `sih26171-benchmark-${new Date().toISOString().slice(0,19).replace(/:/g,"-")}.json`;
+      a.download = `aegis-benchmark-${new Date().toISOString().slice(0,19).replace(/:/g,"-")}.json`;
       a.click();
       URL.revokeObjectURL(url);
     }

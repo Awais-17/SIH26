@@ -1,4 +1,4 @@
-# 🎤 Pitch Storytelling Framework — SIH26171
+# 🎤 Pitch Storytelling Framework — Aegis
 ### On-device Visual Perception for Light-weight Browser Agents
 
 ---

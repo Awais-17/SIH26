@@ -1,5 +1,5 @@
 {
-  "name": "sih26171-browser-agent",
+  "name": "aegis-browser-agent",
   "version": "0.1.0",
   "private": true,
   "description": "On-device visual perception for lightweight browser agents",

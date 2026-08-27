@@ -1,4 +1,4 @@
-# SIH26171 — On-device Visual Perception for Light-weight Browser Agents
+# Aegis — On-device Visual Perception for Light-weight Browser Agents
 
 ## Project Overview
 
@@ -36,8 +36,8 @@ A privacy-preserving browser extension that intercepts screen content before it 
 
 | Doc | Purpose | Link |
 |---|---|---|
-| Deep Structured Analysis | Problem understanding, feasibility, competitor landscape, evaluator lens | [SIH26171_Deep_Structured_Analysis.md](../SIH26171_Deep_Structured_Analysis.md) |
-| Pitch Storytelling Framework | Narrative arc for the final pitch | [SIH26171_Pitch_Storytelling_Framework.md](../SIH26171_Pitch_Storytelling_Framework.md) |
+| Deep Structured Analysis | Problem understanding, feasibility, competitor landscape, evaluator lens | [Aegis_Deep_Structured_Analysis.md](../docs/Aegis_Deep_Structured_Analysis.md) |
+| Pitch Storytelling Framework | Narrative arc for the final pitch | [Aegis_Pitch_Storytelling_Framework.md](../Aegis_Pitch_Storytelling_Framework.md) |
 
 ---
 
