@@ -31,6 +31,21 @@ npm run start:mock
 npm start
 ```
 
+## One-shot demo start (for the friend's laptop / clean machine)
+
+```powershell
+# checks Node + Ollama, pulls qwen3-vl:8b if missing, starts HOST=0.0.0.0,
+# prints the LAN IP, /health URLs and the firewall rule to allow inbound 8000
+powershell -ExecutionPolicy Bypass -File start-demo.ps1
+
+# model-free fallback for a rehearsal / no-network demo
+powershell -ExecutionPolicy Bypass -File start-demo.ps1 -Mock
+
+# double-click friendly wrapper:  start-demo.bat   |   start-demo.bat mock
+```
+
+Flags: `-Mock`, `-Port <int>` (default 8000), `-Model <name>` (default `qwen3-vl:8b`).
+
 Configuration via env vars (all optional):
 
 | Var                  | Default                     | Purpose                          |

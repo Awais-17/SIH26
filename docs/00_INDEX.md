@@ -27,6 +27,7 @@ A privacy-preserving browser extension that intercepts screen content before it 
 | Doc | Purpose | Link |
 |---|---|---|
 | **07** | **Status & Handoff — current state, how to run, remaining work. READ FIRST** | [07_STATUS_AND_HANDOFF.md](07_STATUS_AND_HANDOFF.md) |
+| **08** | **Demo Runbook — the 3 live stories, setup, failure playbook** | [08_DEMO_RUNBOOK.md](08_DEMO_RUNBOOK.md) |
 | 01 | Requirements — functional/non-functional reqs, redaction taxonomy, MVP scope | [01_REQUIREMENTS.md](01_REQUIREMENTS.md) |
 | 02 | Architecture — components, data flow, sanitization pipeline, server contract | [02_ARCHITECTURE.md](02_ARCHITECTURE.md) |
 | 03 | Tech Stack & Models — model selection matrix, ADRs, latency budgets | [03_TECH_STACK_MODELS.md](03_TECH_STACK_MODELS.md) |

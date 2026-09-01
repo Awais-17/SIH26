@@ -6,10 +6,15 @@
   "scripts": {
     "dev": "echo 'Load src/ as unpacked extension in chrome://extensions'",
     "lint": "eslint src/",
-    "typecheck": "echo 'No TypeScript yet'"
+    "typecheck": "echo 'No TypeScript yet'",
+    "test": "node scripts/test-field-mapper.mjs && node scripts/test-autofill.mjs && node scripts/test-blazeface.mjs && node scripts/test-ortho.mjs && node scripts/test-ner-offsets.mjs"
   },
-  "devDependencies": {},
   "dependencies": {
+    "@huggingface/transformers": "^4.2.0",
     "onnxruntime-web": "^1.21.0"
+  },
+  "devDependencies": {
+    "onnxruntime-node": "^1.29.0",
+    "puppeteer-core": "^25.9.0"
   }
 }

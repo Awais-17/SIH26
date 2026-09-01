@@ -10,7 +10,8 @@
     "tabs",
     "storage",
     "scripting",
-    "offscreen"
+    "offscreen",
+    "contextMenus"
   ],
 
   "host_permissions": ["<all_urls>"],
@@ -23,10 +24,18 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["src/content/content.js"],
+      "js": [
+        "src/content/field-mapper.js",
+        "src/content/autofill.js",
+        "src/content/content.js"
+      ],
       "run_at": "document_idle"
     }
   ],
+
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
+  },
 
   "action": {
     "default_popup": "src/popup/popup.html",
@@ -43,9 +52,19 @@
     "128": "src/icons/icon128.png"
   },
 
+  "commands": {
+    "autofill_page": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+F",
+        "mac": "Command+Shift+F"
+      },
+      "description": "Autofill active web page form with Aegis profile"
+    }
+  },
+
   "web_accessible_resources": [
     {
-      "resources": ["src/offscreen/offscreen.html"],
+      "resources": ["src/offscreen/offscreen.html", "src/voice/voice.html", "src/dashboard/dashboard.html"],
       "matches": ["<all_urls>"]
     }
   ]

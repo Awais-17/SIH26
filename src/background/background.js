@@ -40,7 +40,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
 
   if (msg.type === "EXECUTE_ACTION") {
-    handleExecuteAction(msg.action, sender.tab?.id).then(sendResponse).catch((err) => {
+    handleExecuteAction(msg.action).then(sendResponse).catch((err) => {
       sendResponse({ error: err.message });
     });
     return true;
@@ -57,6 +57,31 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
 });
 
+// ── Keyboard Shortcut Listener (Ctrl+Shift+F) ─────────────────────
+chrome.commands?.onCommand?.addListener(async (command) => {
+  if (command === "autofill_page") {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (tab?.id) {
+      chrome.tabs.sendMessage(tab.id, { type: "PROFILE_PREFILL" });
+    }
+  }
+});
+
+// ── Context Menu (Right-Click "Fill with Aegis Profile") ─────────
+chrome.runtime.onInstalled.addListener(() => {
+  chrome.contextMenus?.create({
+    id: "aegis_autofill_context",
+    title: "🛡️ Fill Form with Aegis Profile",
+    contexts: ["page", "editable"]
+  });
+});
+
+chrome.contextMenus?.onClicked?.addListener(async (info, tab) => {
+  if (info.menuItemId === "aegis_autofill_context" && tab?.id) {
+    chrome.tabs.sendMessage(tab.id, { type: "PROFILE_PREFILL" });
+  }
+});
+
 // ── Core Pipeline ─────────────────────────────────────────────────
 
 async function handleCaptureAndSanitize(task) {
@@ -64,29 +89,49 @@ async function handleCaptureAndSanitize(task) {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab?.id) throw new Error("No active tab");
 
+  // 2. Prefill known profile fields BEFORE the screenshot. Filled fields are
+  //    flagged in the DOM scan and black-filled by the offscreen document, so
+  //    profile values never appear in anything sent to the VLM.
+  const settings = await chrome.storage.local.get([
+    "profileAutofill",
+    "vlmEndpoint",
+    "vlmModel",
+  ]);
+  let profileResult = null;
+  if (settings.profileAutofill !== false) {
+    try {
+      profileResult = await chrome.tabs.sendMessage(tab.id, {
+        type: "PROFILE_PREFILL",
+      });
+    } catch {
+      // content script not injected (e.g. chrome:// page) — skip prefill
+    }
+  }
+
   const screenshotDataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, {
     format: "png",
   });
 
-  // 2. Get DOM scan results from content script
+  // 3. Get DOM scan results from content script
   const domScanResults = await chrome.tabs.sendMessage(tab.id, {
     type: "DOM_SCAN",
   });
 
-  // 3. Ensure offscreen document is running
+  // 4. Ensure offscreen document is running
   await ensureOffscreen();
 
-  // 4. Send to offscreen document for inference + masking
+  // 5. Send to offscreen document for inference + masking
   const sanitizeResponse = await chrome.runtime.sendMessage({
     type: "SANITIZE",
     screenshot: screenshotDataUrl,
     domScanResults,
+    tabId: tab.id,
   });
 
   if (sanitizeResponse.error) throw new Error(sanitizeResponse.error);
 
-  // 5. Send sanitized image to VLM
-  const config = await chrome.storage.local.get(["vlmEndpoint", "vlmModel"]);
+  // 6. Send sanitized image to VLM
+  const config = settings;
   const vlmEndpoint = config.vlmEndpoint || "http://localhost:8000/v1/chat/completions";
   const vlmModel = config.vlmModel || "Qwen/Qwen3-VL-8B-Instruct";
 
@@ -150,6 +195,14 @@ async function handleCaptureAndSanitize(task) {
     pageStructure,
     action,
     sanitizedImage: sanitizeResponse.sanitizedImage,
+    profile: profileResult
+      ? {
+          filledCount: profileResult.filled?.length || 0,
+          unknownCount: profileResult.unknown?.length || 0,
+          neverStoreCount: profileResult.neverStore?.length || 0,
+          promptShown: profileResult.promptShown || false,
+        }
+      : null,
   };
 }
 
@@ -203,5 +256,6 @@ chrome.runtime.onInstalled.addListener(() => {
     faceDetection: true,
     passwordDetection: true,
     piiDetection: true,
+    profileAutofill: true,
   });
 });

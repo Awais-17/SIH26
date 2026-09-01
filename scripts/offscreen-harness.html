@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Aegis offscreen in-browser check</title>
+</head>
+<body>
+  <!-- The SAME canvas the real offscreen.html uses -->
+  <canvas id="mask-canvas" width="1" height="1"></canvas>
+
+  <script>
+    // ── Minimal chrome shim so the REAL production scripts run unchanged ──
+    // vision.js uses chrome.runtime.getURL for model/vendor paths.
+    // offscreen.js uses chrome.storage (detection toggles) + runtime.onMessage.
+    window.SERVER_ORIGIN = location.origin;
+    window.chrome = {
+      runtime: {
+        getURL: (p) => new URL(p, location.origin).href,
+        onMessage: { addListener: (fn) => { window.__sanitizeListener = fn; } },
+        lastError: null,
+      },
+      storage: {
+        local: { get: async () => ({}), set: async () => {}, remove: async () => {} },
+        onChanged: { addListener: () => {} },
+      },
+      tabs: { sendMessage: async () => null },
+    };
+    window.__captureConsole = [];
+    window.addEventListener("error", (e) => window.__captureConsole.push("error: " + (e.message || e.error)));
+    window.addEventListener("unhandledrejection", (e) => {
+      const r = e.reason;
+      window.__captureConsole.push("unhandledrejection: " + (r && r.stack ? r.stack : String(r)));
+    });
+    const clog = console.log.bind(console), cwarn = console.warn.bind(console);
+    console.log = (...a) => { window.__captureConsole.push("log: " + a.map(String).join(" ")); clog(...a); };
+    console.warn = (...a) => { window.__captureConsole.push("warn: " + a.map(String).join(" ")); cwarn(...a); };
+
+    // ── Load the EXACT production scripts, in the order offscreen.html uses ──
+    const scriptOrder = ["vision.js", "offscreen.js"];
+  </script>
+
+  <script src="../src/offscreen/vision.js"></script>
+  <script src="../src/offscreen/offscreen.js"></script>
+
+  <script>
+    // ── Driver: build a screenshot (face posted on a canvas), run SANITIZE ──
+    window.__aegisCheck = { state: "pending" };
+    window.__nerDiag = { state: "pending" };
+    window.__nerEntityDiag = null;
+
+    // Direct NER diagnostic: run the raw pipeline + dump tokens.
+    (async () => {
+      try {
+        window.__nerDiag = { state: "loading", console: window.__captureConsole };
+        const mod = await import(new URL("./src/vendor/transformers.min.js", location.origin).href);
+        const { pipeline, env } = mod;
+        env.allowLocalModels = true;
+        env.allowRemoteModels = false;
+        env.localModelPath = new URL("./src/models/", location.origin).href;
+        if (env.backends?.onnx?.wasm) env.backends.onnx.wasm.wasmPaths = new URL("./src/vendor/ort/", location.origin).href;
+        const extractor = await pipeline("token-classification", "ner", { dtype: "q8", local_files_only: true });
+        const tkType = typeof extractor.tokenizer;
+        console.warn("NER v3 diag: tkType=" + tkType + " ctor=" + (extractor.tokenizer && extractor.tokenizer.constructor && extractor.tokenizer.constructor.name));
+        const text = "My name is Ananya Rao. I live in Bengaluru and work at ISRO.";
+        const tokens = await extractor(text, { aggregation_strategy: "none" });
+        window.__nerDiag = {
+          state: "done",
+          tokenCount: tokens.length,
+          nonO: tokens.filter((t) => t.entity !== "O").length,
+          sample: tokens.slice(0, 20).map((t) => `${t.word}(${t.entity},${t.score && t.score.toFixed(2)})`),
+          consoleTail: window.__captureConsole.slice(-10),
+        };
+      } catch (e) {
+        window.__nerDiag = { state: "error", error: (e && e.stack) || String(e), console: window.__captureConsole };
+      }
+    })();
+
+    async function loadImage(src) {
+      return new Promise((res, rej) => {
+        const im = new Image();
+        im.onload = () => res(im);
+        im.onerror = rej;
+        im.src = src;
+      });
+    }
+
+    async function runCheck() {
+      try {
+        const started = Date.now();
+        const facePng = await fetch("h/face.png").then((r) => r.blob());
+        const faceUrl = URL.createObjectURL(facePng);
+        const img = await loadImage(faceUrl);
+        const c = document.createElement("canvas");
+        c.width = img.naturalWidth;
+        c.height = img.naturalHeight;
+        c.getContext("2d").drawImage(img, 0, 0);
+        const screenshot = c.toDataURL("image/png");
+
+        const domScanResults = {
+          dpr: 1,
+          fields: [
+            { type: "password_input", sensitive: true, rect: { x: 600, y: 600, width: 300, height: 40 } },
+            { type: "profile_filled", sensitive: true, rect: { x: 100, y: 100, width: 240, height: 36 } },
+          ],
+          visibleText: [
+            { text: "My name is Ananya Rao. I live in Bengaluru and work at ISRO. Email is ananya@example.com.", rect: { x: 60, y: 500, width: 900, height: 28 } },
+            { text: "Aadhaar 612345678901 filed.", rect: { x: 60, y: 540, width: 700, height: 28 } },
+          ],
+        };
+
+        const resp = await new Promise((resolve, reject) => {
+          window.__sanitizeListener(
+            { type: "SANITIZE", screenshot, domScanResults },
+            {},
+            (r) => (r && r.error ? reject(new Error(r.error)) : resolve(r))
+          );
+        });
+
+        const types = (resp.maskedRegions || []).map((m) => `${m.type}${m.source ? ":" + m.source : ""}${m.entity ? ":" + m.entity : ""}`);
+        window.__aegisCheck = {
+          state: "done",
+          elapsedMs: Date.now() - started,
+          masked: resp.maskedRegions || [],
+          types,
+          hasSanitized: !!(resp.sanitizedImage && resp.sanitizedImage.startsWith("data:image/png")),
+          sizes: { kiried: (resp.sanitizedImage || "").length },
+          console: window.__captureConsole,
+        };
+      } catch (e) {
+        window.__aegisCheck = { state: "error", error: e.message, console: window.__captureConsole };
+      }
+    }
+
+    // Give the offscreen document a moment, then run.
+    setTimeout(runCheck, 1500);
+
+    // Post-check: call detectEntities directly with the exact DOM texts.
+    (async () => {
+      await new Promise((r) => setTimeout(r, 8000));
+      if (!window.AegisVision) { window.__nerEntityDiag = { err: "no AegisVision" }; return; }
+      try {
+        const texts = [
+          "My name is Ananya Rao. I live in Bengaluru and work at ISRO.",
+          "Aadhaar 612345678901 filed.",
+        ];
+        const spans = await window.AegisVision.detectEntities(texts);
+        window.__nerEntityDiag = { spans, entities: spans.map((s) => `${s.entity}@${s.nodeIndex}:${s.text}(${s.start}-${s.end})`) };
+      } catch (e) { window.__nerEntityDiag = { err: e.message }; }
+    })();
+  </script>
+</body>
+</html>

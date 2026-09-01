@@ -1,6 +1,6 @@
 # 07 — Status & Handoff (READ THIS FIRST)
 
-**Last updated:** 2026-09-01
+**Last updated:** 2026-09-02 (browser-verified E2E landed: capture → sanitize → VLM → action = 12/12 in a real Chrome; backend demo packaging added)
 **Purpose:** The single doc for any teammate (or agent) picking up the project. Explains what exists, what's real, what's fake, and exactly what to do next.
 
 ---
@@ -19,16 +19,23 @@ Read order for a new teammate: `00_INDEX.md` → `02_ARCHITECTURE.md` → `new f
 
 | Component | File(s) | Status |
 |---|---|---|
-| MV3 scaffold (SW + content + offscreen + popup) | `src/` | ✅ Working code, installed as unpacked extension |
-| Screenshot capture + DOM scan + password black-fill + regex PII blur | `src/background/background.js`, `src/content/content.js`, `src/offscreen/offscreen.js` | ✅ Working pipeline end-to-end **in mock mode** |
-| **BlazeFace face detection** | `src/inference/inference.worker.js` | ❌ **STUB — returns `[]`. No model loaded.** This is Phase 1's core deliverable and 25% of the score |
-| **DistilBERT NER** | `src/inference/inference.worker.js` | ❌ **STUB — returns `[]`.** Regex still catches emails/phones/SSNs |
-| WebGPU backend selection | `src/inference/inference.worker.js` | ⚠️ Logic exists, never exercised with a real model |
-| Backend VLM gateway | `server/index.js` | ✅ Working (zero deps, Node ≥18). Tested via `--mock` + contract test. Untested against a real VLM |
-| Eval harness + 7 test pages + ground truth | `eval/` | ✅ Files exist. ❌ **Zero measured results** |
+| MV3 scaffold (SW + content + offscreen + popup) | `src/` | ✅ Working in a real Chrome session |
+| Screenshot capture + DOM scan + password black-fill + regex PII blur | `src/background/background.js`, `src/content/content.js`, `src/offscreen/offscreen.js` | ✅ Browser-verified in the E2E harness |
+| **Progressive profile autofill** (`new features.md`) | `src/content/field-mapper.js`, `src/content/autofill.js`, popup UI | ✅ Browser-verified — harness seeds profile, prefill lands 5/5 in the DOM (28 mapper + 17 autofill unit tests) |
+| **BlazeFace face detection** | `src/offscreen/vision.js` + `src/models/blazeface.onnx` (0.5MB) | ✅ **REAL, BROWSER-VERIFIED.** Tiled 128×128 scan; face found at the expected coordinates in the sanitized image (BlazeFace dims == capture dims at scale 1.0) |
+| **DistilBERT NER** | `src/offscreen/vision.js` + `src/models/ner/` (**129MB**, q8) | ✅ **REAL, BROWSER-VERIFIED.** PER/LOC/ORG detected in-page; manual char-offset recovery works (regex is still the primary fast path) |
+| Old inference stubs | `src/inference/inference.worker.js` | ⚠️ **Superseded** — real inference moved to `src/offscreen/vision.js`. Delete candidate (see 4.x) |
+| Backend VLM gateway | `server/index.js` | ✅ Working. Mock contract 10/10 + browser E2E. `HOST=0.0.0.0` verified reachable over LAN IP. **Real-VLM (Ollama) call still untested on a real laptop** |
+| Backend demo packaging | `server/start-demo.ps1` / `.bat` | ✅ Added — checks Node + Ollama, pulls `qwen3-vl:8b` if missing, prints LAN IP + `/health` URL + firewall rule, `-Mock` fallback verified |
+| Eval harness + 7 test pages + ground truth | `eval/` | ✅ Files exist + a browser E2E harness (`scripts/browser-verify.mjs`). ❌ The 7-page benchmark scorecard still has **zero measured numbers** |
 | RAG profile / doc upload (`new features.md`) | — | ❌ Not started (correctly — build only after core works) |
 
-**Nothing has been verified in a real Chrome run yet.** Every "✅" above means the code exists and passes local unit/contract tests, not that it survived a live browser.
+**The headline result (browser-verified, `scripts/browser-verify.mjs`):**
+- The **full loop runs in a real Chrome** (Chrome for Testing 152, extension loaded from this repo): content scripts inject → profile prefill 5/5 → `captureVisibleTab` → offscreen SANITIZE (WASM BlazeFace + NER + regex + black-fill) → mock VLM → `{"action":"type",...}` → EXECUTE_ACTION → **the typed value lands in the live DOM**.
+- **12/12 harness assertions pass**, including: sanitized PNG contains **no** password/prefilled-value pixels (black-filled), BlazeFace face box == the face's true position, NER PER span recovered with correct offsets, regex PII matched, and an action round-trip executed end-to-end.
+- All Node suites still green: `npm test` EXIT=0 (28 mapper + 17 autofill + BlazeFace model sanity + tile-scan ortho + NER offsets) and `node server/test-extract.js` (10/10).
+
+**What is NOT yet verified:** a real Ollama/Qwen3-VL call (Mode B) and the measured 7-page benchmark scorecard.
 
 ---
 
@@ -42,30 +49,34 @@ npm run start:mock          # backend on port 8000, fake actions
 Load `src/` via `chrome://extensions` → Developer mode → Load unpacked.
 Click the extension icon → it captures, masks passwords/regex-PII, gets a fake action back.
 
+**Automated E2E (no clicking, needs a face photo):**
+```powershell
+node scripts/browser-verify.mjs C:\path\to\face.jpg
+```
+Launches Chrome for Testing with the extension preloaded, serves `eval/test-pages/vision.html`, seeds a profile, runs capture → sanitize → mock VLM → execute, asserts 12 checks. It does **not** use the popup UI; it drives the same background/offscreen/content code the popup drives.
+
+**Regression checks before/after any change:** `npm test` and `node server/test-extract.js`.
+
+**Chrome load-path for automation:** branded Chrome ≥137 dropped `--load-extension`. The harness uses **Chrome for Testing 152** (see `scripts/browser-verify.mjs` for the binary path). Manual `Load unpacked` in branded Chrome still works fine.
+
 ### Mode B — Real VLM on a second laptop (the current plan)
 The VLM runtime (Ollama) lives on **Friend's laptop**. Both laptops must be on the same WiFi.
 
 **On the friend's laptop (the VLM host):**
 ```powershell
-ollama pull qwen3-vl:8b        # or: qwen2.5vl:7b — any vision-capable model that fits
-ollama serve                   # usually auto-runs as a service
-ollama set OLLAMA_HOST 0.0.0.0  # allow LAN connections (or set env var OLLAMA_HOST=0.0.0.0)
-ipconfig                        # note the IPv4 address, e.g. 192.168.1.42
-```
-Then run the Aegis gateway (from this repo) on the friend's laptop too:
-```powershell
+# one run does everything: checks Node, pulls the model, starts HOST=0.0.0.0,
+# prints the LAN IP, /health URL and the firewall rule to allow inbound 8000
 cd server
-set HOST=0.0.0.0
-set UPSTREAM_BASE_URL=http://localhost:11434/v1
-npm start
+powershell -ExecutionPolicy Bypass -File start-demo.ps1         # -Mock to go model-free
 ```
-Allow Node through Windows Firewall when prompted (or: `New-NetFirewallRule -DisplayName "Aegis" -Direction Inbound -LocalPort 8000 -Protocol TCP -Action Allow` — admin PowerShell).
+(Manual equivalent: `ollama pull qwen3-vl:8b`; `ollama serve`; `set HOST=0.0.0.0`; `npm start`.)
+Open the port if the second laptop times out (admin shell):
+```powershell
+New-NetFirewallRule -DisplayName "Aegis" -Direction Inbound -LocalPort 8000 -Protocol TCP -Action Allow
+```
 
 **On your laptop (the browser):**
-The extension's VLM endpoint must point at the friend's IP. Set it in the popup (it persists via `chrome.storage.local`), or it defaults to `http://localhost:8000` which is wrong for this setup:
-- Popup → VLM Endpoint → `http://192.168.1.42:8000/v1/chat/completions` (friend's IP)
-
-Sanity check from your laptop before loading the extension:
+Set the popup VLM Endpoint to `http://<FRIEND_IP>:8000/v1/chat/completions` (persists in `chrome.storage.local`), then sanity-check:
 ```powershell
 curl http://192.168.1.42:8000/health     # expect upstreamReachable: true
 ```
@@ -76,32 +87,38 @@ curl http://192.168.1.42:8000/health     # expect upstreamReachable: true
 
 ## 4. Remaining work, in build order
 
-### 4.1 Phase 1 completion — BlazeFace (HIGHEST PRIORITY, 25% of score)
-- [ ] Put `blazeface.onnx` (~400KB) in `src/models/` — convert from TFJS or find an ONNX release
-- [ ] Implement `detectFaces()` in `inference.worker.js`: preprocess (resize 128×128, normalize), run session, decode anchors → bboxes, confidence filter
-- [ ] Load model via Cache API (see `03_TECH_STACK_MODELS.md` §5.3)
-- [ ] Wire offscreen.js placeholder → real worker inference
-- [ ] **Verify by eye**: load `eval/test-pages/tp03-profile-page.html`, confirm blur lands on faces (ENGINEERING_RULES: "look at the output")
+### 4.0 ✅ DONE — in-browser verification (was the highest risk)
+Covered by `scripts/browser-verify.mjs` (12/12) + `scripts/offscreen-browser-check.mjs` (10/10 on the vision layer alone). Findings that came out of it — read before repeating any of this:
+1. **Branded Chrome ≥137 refuses `--load-extension`**; switch to Chrome for Testing (repo pins 152), or load unpacked manually in developer mode.
+2. **Chrome does not deliver `chrome.runtime.sendMessage` sent from the service worker to itself** ("Receiving end does not exist"), even with a listener registered inside the SW. Drive SW-bound traffic from an *extension page* (the popup) — which is the real production call path anyway. SW→content-script `tabs.sendMessage` works fine.
+3. **Real product bug fixed:** EXECUTE_ACTION used `sender.tab?.id`, which for extension-page senders is the popup's own tab (no content script there) → "Receiving end does not exist". Background now always targets the **active tab**.
+4. **Real product bug fixed:** `content.js` computed `filled` as `undefined` for sensitive/prefilled fields; now `filled: (field.value || "").trim().length > 0` so the VLM page structure sees prefilled fields as filled.
+5. **`captureVisibleTab` renders at the OS display scale** (×1.25 here) while the page keeps device-pixel-ratio 1 → masks misalign with the drawing. Fixed with `--force-device-scale-factor=1` + a harness dynamic scale probe (capture dims vs CSS dims → `deviceScaleFactor`). At scale 1.0, sanitized-pixel coordinates == DOM coordinates.
+6. **BlazeFace false-positives on repaint-blurred captures**; re-capturing after the page settles or forcing scale 1.0 eliminated them.
+7. **Prefill seeding shape:** `chrome.storage.local` key `aegisProfile` must store per-key `{ value, updatedAt }` objects — plain strings read back as empty.
+8. **Real product bug fixed while building the demo page:** placeholder hints on a *name* field — "Full Name (as per Aadhaar / PAN)" — triggered `never_store` and turned the name field into a redacted identifier (the word `PAN` matched against `el.placeholder`). Never-store detection now uses label/name/id/aria/title only (`field-mapper.js`); regression tests added (tests went 28 → 31). Lesson: identifier detection must never trust instructional placeholder copy.
+9. **"Nationality" fields classify as `country`** (the country rule lists `/nationality/i`) — seed `country` in the profile or expect the ask-once card to ask "Country".
 
-### 4.2 Phase 2 completion — NER (20% of score)
-- [ ] DistilBERT NER ONNX (~66MB) + tokenizer in worker; lazy-load with loading state
-- [ ] Char-offset → bbox mapping via `Range` API (see milestone risks — this is the tricky part)
-- [ ] Tune confidence threshold + exclusion list to avoid over-redaction
+### 4.1 Cleanup
+- [ ] Delete `src/inference/inference.worker.js` (superseded) + update `03_TECH_STACK_MODELS.md`.
+- [ ] Add `.gitignore` (`node_modules/`, `.onnx`/`src/models/` bloat debate) — repo is now ~160MB+. OneDrive/git both choke.
 
-### 4.3 Phase 4 — Real E2E loop (per §3 above, once BlazeFace works)
-- [ ] Friend's laptop: Ollama + gateway running, `/health` green from your machine
-- [ ] Extension: run the full loop on `eval/test-pages/tp01-login-form.html`
-- [ ] Verify password typed via DOM injection never appears in any network payload (DevTools → Network — this is a demo-day talking point)
+### 4.2 Real E2E loop (still needs the friend's laptop)
+- [ ] Friend's laptop: `server/start-demo.ps1` → `/health` green from your machine
+- [ ] Extension: full loop on `eval/test-pages/tp01-login-form.html` with a **real** VLM action (not `--mock`)
+- [ ] Verify password & prefilled profile values never appear in any network payload (DevTools → Network) — demo-day talking point
 
-### 4.4 Phase 5 — Run the harness, produce real numbers
+### 4.3 Run the eval harness, produce real numbers
 - [ ] `eval/harness/eval-harness.js` against all 7 test pages
 - [ ] Fill `eval/reports/benchmark-report-template.md` with **measured** values only
-- [ ] Targets: Visual ≥90%, PII recall ≥85%, redaction precision ≥90%, mem ≤500MB, latency ≤3s
+- [ ] Targets: Visual ≥90%, PII recall ≥85%, redaction precision ≥90%, mem ≤500MB, latency ≤3s. NER model alone is 129MB in RAM on load + BlazeFace tiles ≈ 100–200ms each at stride 96 (1280×720 ≈ 120 tiles) — latency target may need the MAX_TILES cap tightened.
 
-### 4.5 Phase 6 — Demo polish
-- [ ] Loan-application demo scenario; popup status UI; rehearse on a clean machine; record backup video
+### 4.4 Demo polish
+- [ ] `eval/demo/demo-loan.html` — polished loan-application page (photo + form + declaration text with names/locations) built; wire it into the runbook
+- [ ] Popup status UI polish; rehearse on a clean machine; record backup video
+- Demo pieces already in place: backend packaged (`start-demo.ps1`/`.bat`), browser E2E harness, profile seed + ask-once flow.
 
-### 4.6 Only if time remains (`new features.md`)
+### 4.5 Only if time remains (`new features.md`)
 - RAG profile building, document upload. Per that doc: "an unfinished differentiator is worse than a polished core."
 
 ---
@@ -109,13 +126,22 @@ curl http://192.168.1.42:8000/health     # expect upstreamReachable: true
 ## 5. Key files map
 
 ```
-src/background/background.js   orchestrator: capture → sanitize → VLM → execute
-src/content/content.js         DOM scan + action execution (click/type/scroll)
-src/offscreen/offscreen.js     canvas masking + detection merge  ← STUBS for faces/NER
-src/inference/inference.worker.js  ONNX inference           ← BIGGEST GAP
-src/popup/popup.js             UI, config (VLM endpoint lives in chrome.storage.local)
-server/index.js                laptop-hosted VLM gateway (this repo, zero deps)
-eval/                          test pages, ground truth, harness, report template
+src/background/background.js   orchestrator: prefill → capture → sanitize → VLM → execute
+src/content/field-mapper.js    classify form fields → canonical profile keys (window.AegisFieldMapper)
+src/content/autofill.js        progressive profile + ask-once card (window.AegisAutofill)
+src/content/content.js         DOM scan + PII rect measurement + action execution
+src/offscreen/vision.js        REAL BlazeFace (tiled) + DistilBERT NER (window.AegisVision)
+src/offscreen/offscreen.js     canvas masking + merges vision/regex results
+src/inference/inference.worker.js  OLD stubs — superseded by vision.js (delete candidate)
+src/popup/popup.js             UI, config (VLM endpoint, profile editor, detection toggles)
+src/vendor/                    vendored transformers.min.js + ort.min.mjs + ort wasm pair
+src/models/                    blazeface.onnx (0.5MB) + ner/ (129MB q8)
+scripts/test-*.mjs             Node regression tests (npm test)
+scripts/browser-verify.mjs     CHROME E2E harness — 12/12 assertions, full loop in real Chrome
+scripts/offscreen-browser-check.mjs  vision-layer-only browser harness (10/10)
+server/index.js                laptop-hosted VLM gateway (zero deps); HOST=0.0.0.0 for LAN
+server/start-demo.ps1 / .bat   one-shot demo starter for the friend's laptop (-Mock supported)
+eval/                          test pages, ground truth, harness, report template, demo page
 docs/                          all specs; ENGINEERING_RULES.md is binding
 ```
 
