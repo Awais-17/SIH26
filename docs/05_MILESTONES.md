@@ -15,16 +15,16 @@
 **Goal:** A Chrome extension that captures the screen and runs BlazeFace ONNX face detection locally via WASM.
 
 ### Deliverables
-- [ ] MV3 extension scaffold (service worker, content script, offscreen document)
-- [ ] `chrome.tabs.captureVisibleTab()` working from service worker
-- [ ] Offscreen document created via `chrome.offscreen.createDocument()`
-- [ ] ONNX Runtime Web loaded in offscreen document (WASM backend)
-- [ ] BlazeFace ONNX model loaded and cached in Cache API
-- [ ] Face detection running on captured screenshot — bounding boxes logged to console
-- [ ] Mask rendering: Gaussian blur applied to detected face regions on canvas
+- [x] MV3 extension scaffold (service worker, content script, offscreen document)
+- [x] `chrome.tabs.captureVisibleTab()` working from service worker
+- [x] Offscreen document created via `chrome.offscreen.createDocument()`
+- [x] ONNX Runtime Web loaded in offscreen document (WASM backend)
+- [ ] BlazeFace ONNX model loaded and cached in Cache API — **STUB, worker returns `[]`**
+- [ ] Face detection running on captured screenshot — bounding boxes logged to console — **NOT DONE**
+- [x] Mask rendering: Gaussian blur applied to detected face regions on canvas — *rendering works, but no real detections feed it yet*
 
 ### Exit Criteria
-- Extension installed in Chrome, clicking action icon captures screen, detects faces, blurs them, outputs sanitized image.
+- Extension installed in Chrome, clicking action icon captures screen, detects faces, blurs them, outputs sanitized image. **NOT MET — see 07_STATUS_AND_HANDOFF.md**
 
 ### Dependencies
 - None (starting point)
@@ -40,14 +40,14 @@
 **Goal:** Full three-layer detection pipeline (DOM + visual + text) with combined mask rendering.
 
 ### Deliverables
-- [ ] Content script DOM scanner: detects `type="password"`, `autocomplete`, `aria-label` sensitive fields
-- [ ] DOM field rects extracted and sent to offscreen document
-- [ ] DistilBERT NER model loaded via Transformers.js in offscreen document
-- [ ] Regex pre-filters for SSN, phone, email, credit card numbers
-- [ ] NER + regex pipeline runs on DOM `innerText` — PII entities detected
-- [ ] Combined RedactionMap merging all three detection layers
-- [ ] Mask renderer handles all types: blur (faces, PII text), black-fill (password fields)
-- [ ] Structural context payload built (sanitized image + page structure JSON)
+- [x] Content script DOM scanner: detects `type="password"`, `autocomplete`, `aria-label` sensitive fields
+- [x] DOM field rects extracted and sent to offscreen document
+- [ ] DistilBERT NER model loaded via Transformers.js in offscreen document — **STUB**
+- [x] Regex pre-filters for SSN, phone, email, credit card numbers *(email/phone/SSN; credit card pending)*
+- [ ] NER + regex pipeline runs on DOM `innerText` — PII entities detected — *regex only, NER not implemented*
+- [x] Combined RedactionMap merging all three detection layers — *structure exists, two of three layers are stubs*
+- [x] Mask renderer handles all types: blur (faces, PII text), black-fill (password fields)
+- [x] Structural context payload built (sanitized image + page structure JSON)
 
 ### Exit Criteria
 - Extension correctly blurs faces (visual), black-fills password fields (DOM), and blurs name/location/email text (NER + regex) on Test Page 1 (login form).
@@ -89,12 +89,12 @@
 **Goal:** Full capture → sanitize → VLM → action loop working end-to-end.
 
 ### Deliverables
-- [ ] Qwen3-VL-8B-Instruct deployed (Ollama for dev, vLLM for production)
-- [ ] Structural context payload sent to VLM via OpenAI-compatible API
-- [ ] VLM response parsed into action object (click/type/scroll/done)
-- [ ] Content script executes actions on live DOM
+- [ ] Qwen3-VL-8B-Instruct deployed (Ollama for dev, vLLM for production) — **model on teammate's laptop, gateway in `server/` ready, LAN setup in 07_STATUS_AND_HANDOFF.md §3**
+- [x] Structural context payload sent to VLM via OpenAI-compatible API — *gateway built + contract-tested in mock mode, untested against real VLM*
+- [x] VLM response parsed into action object (click/type/scroll/done)
+- [x] Content script executes actions on live DOM
 - [ ] E2E demo task defined: "Fill the login form and submit" (or loan application form)
-- [ ] Full loop working: trigger → capture → sanitize → VLM → action → done
+- [ ] Full loop working: trigger → capture → sanitize → VLM → action → done — **NOT DONE in a real browser**
 
 ### Exit Criteria
 - User triggers task, extension captures screen, sanitizes, sends to VLM, VLM returns correct action, extension executes it. Form is filled/submitted without password ever leaving the device.
